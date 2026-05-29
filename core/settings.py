@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'logistics',
     'django_filters',
     'drf_spectacular',
-    'django-cors-headers',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
