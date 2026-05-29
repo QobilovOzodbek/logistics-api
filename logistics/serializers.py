@@ -13,11 +13,22 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 # 2. Foydalanuvchilar uchun Serializer
+# logistics/serializers.py dagi UserSerializer ni shunga almashtiring:
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'first_name', 'last_name', 'role', 'phone_number']
+        fields = ['id', 'username', 'first_name', 'last_name', 'role', 'phone_number', 'password']
+        extra_kwargs = {'password': {'write_only': True}} # Parolni API da o'qishni taqiqlaymiz, faqat yozish mumkin
 
+    def create(self, validated_data):
+        # Parolni avtomatik shifrlab bazaga saqlaymiz
+        password = validated_data.pop('password', None)
+        user = CustomUser(**validated_data)
+        if password:
+            user.set_password(password)
+        user.save()
+        return user
+    
 # 3. Yuk mashinalari uchun Serializer
 class VehicleSerializer(serializers.ModelSerializer):
     # Bu qator orqali biz faqat haydovchi ID'sini emas, uning to'liq ma'lumotlarini ham chiqaramiz
