@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import CustomUser, Vehicle, Order, LocationLog
 
 # 1. Foydalanuvchilar uchun Serializer
@@ -36,3 +37,12 @@ class LocationLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = LocationLog
         fields = ['id', 'vehicle', 'latitude', 'longitude', 'recorded_at']
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        # Token bilan birga foydalanuvchi ma'lumotlarini ham yuboramiz
+        data['role'] = self.user.role
+        data['username'] = self.user.username
+        data['first_name'] = self.user.first_name
+        return data
