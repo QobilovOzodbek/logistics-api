@@ -71,7 +71,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated, IsDriverAssignedToOrder]
     
-    # FILTR, QIDIRUV VA SARALASH (Sort)
+    # FILTR, QIDIRUV VA SARALASH
     filterset_fields = ['status', 'pickup_location', 'dropoff_location']
     search_fields = ['cargo_description', 'pickup_location', 'dropoff_location']
     ordering_fields = ['created_at', 'price', 'weight_tons']
@@ -81,6 +81,42 @@ class OrderViewSet(viewsets.ModelViewSet):
         if user.role == 'driver':
             return Order.objects.filter(vehicle__driver=user)
         return Order.objects.all()
+
+    # ==========================================
+    # 1. YANGI BUYURTMA YARATILGANDA
+    # ==========================================
+    def perform_create(self, serializer):
+        order = serializer.save()
+        # Agar buyurtmaga mashina biriktirilgan bo'lsa, uni darhol "Band" qilamiz
+        if order.vehicle:
+            order.vehicle.status = 'on_trip'
+            order.vehicle.save()
+
+    # ==========================================
+    # 2. BUYURTMA TAHRIRLANGANDA / YETKAZILGANDA
+    # ==========================================
+    def perform_update(self, serializer):
+        # Tahrirlashdan oldingi eski holatni va eski mashinani eslab qolamiz
+        old_order = self.get_object()
+        old_vehicle = old_order.vehicle
+
+        # Yangi o'zgarishlarni saqlaymiz
+        order = serializer.save()
+
+        # Agar dispecher mashinani boshqasiga almashtirgan bo'lsa, eskisini bo'shatib yuboramiz
+        if old_vehicle and old_vehicle != order.vehicle:
+            old_vehicle.status = 'available'
+            old_vehicle.save()
+
+        # Agar buyurtma holati "Yetkazildi" ga o'zgarsa (Haydovchi tugmani bossa)
+        if order.status == 'delivered' and order.vehicle:
+            order.vehicle.status = 'available'  # Mashina bo'shadi
+            order.vehicle.save()
+            
+        # Agar yangi mashina biriktirilgan bo'lsa yoki hali yo'lda bo'lsa
+        elif order.status in ['pending', 'in_transit'] and order.vehicle:
+            order.vehicle.status = 'on_trip' # Mashina band qilindi
+            order.vehicle.save()
 
 class LocationLogViewSet(viewsets.ModelViewSet):
     queryset = LocationLog.objects.all()
